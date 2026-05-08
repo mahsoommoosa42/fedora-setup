@@ -17,6 +17,20 @@ info "Note: bandwhich, hexyl, dust, sd will be installed via cargo in Section 9"
 info "Installing starship prompt..."
 run_installer "https://starship.rs/install.sh" -y
 
+# Create default starship config with nerd-font preset if not already present
+STARSHIP_CONFIG="$HOME/.config/starship.toml"
+if [[ ! -f "$STARSHIP_CONFIG" ]]; then
+    info "Creating default starship config with nerd-font preset..."
+    mkdir -p "$(dirname "$STARSHIP_CONFIG")"
+    if [[ "${DRY_RUN:-0}" == "1" ]]; then
+        echo "DRY_RUN: starship preset nerd-font > $STARSHIP_CONFIG"
+    else
+        starship preset nerd-font > "$STARSHIP_CONFIG"
+    fi
+else
+    info "Starship config already exists at $STARSHIP_CONFIG (skipping preset)"
+fi
+
 append_if_missing "starship init" \
 '# Starship — cross-shell prompt
 eval "$(starship init bash)"'
