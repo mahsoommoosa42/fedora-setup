@@ -13,9 +13,9 @@ else
     run_installer "https://bun.sh/install"
 fi
 
-clean_config "bun PATH"
+clean_shell_init "bun PATH"
 
-append_if_missing "bun PATH" \
+append_to_shell_init "bun PATH" \
 '# Bun — JavaScript runtime & package manager
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"

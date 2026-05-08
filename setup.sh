@@ -16,6 +16,16 @@ source "$SCRIPT_DIR/lib/colors.sh"
 source "$SCRIPT_DIR/lib/detect.sh"
 source "$SCRIPT_DIR/lib/utils.sh"
 
+# Ensure the shell-init file exists and is sourced from shell configs
+# This must happen before any module tries to append to it
+ensure_shell_init "$BASHRC"
+if [[ -f "$HOME/.zshrc" ]]; then
+    ensure_shell_init "$HOME/.zshrc"
+fi
+if [[ -f "$HOME/.bash_profile" ]]; then
+    ensure_shell_init "$HOME/.bash_profile"
+fi
+
 [[ "$(id -u)" -eq 0 ]] && die "Do not run as root. sudo will be invoked when needed."
 
 if ! grep -q "Fedora" /etc/os-release 2>/dev/null; then

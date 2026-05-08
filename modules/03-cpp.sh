@@ -19,9 +19,9 @@ dnf_install \
     catch2-devel gtest-devel \
     google-benchmark-devel onetbb-devel
 
-clean_config "ccache PATH"
+clean_shell_init "ccache PATH"
 
-append_if_missing "ccache PATH" \
+append_to_shell_init "ccache PATH" \
 '# ccache — compiler cache
 export PATH="/usr/lib64/ccache:$PATH"'
 

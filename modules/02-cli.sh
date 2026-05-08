@@ -20,7 +20,7 @@ run_installer "https://starship.rs/install.sh" -y
 # Clean existing starship config if CLEAN_INSTALL is set
 STARSHIP_CONFIG="$HOME/.config/starship.toml"
 remove_file "$STARSHIP_CONFIG"
-clean_config "starship init"
+clean_shell_init "starship init"
 
 # Create default starship config with nerd-font preset if not already present
 if [[ ! -f "$STARSHIP_CONFIG" ]]; then
@@ -35,7 +35,7 @@ else
     info "Starship config already exists at $STARSHIP_CONFIG (skipping preset)"
 fi
 
-append_if_missing "starship init" \
+append_to_shell_init "starship init" \
 '# Starship — cross-shell prompt
 eval "$(starship init bash)"'
 

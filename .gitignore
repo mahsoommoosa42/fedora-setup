@@ -1,2 +1,31 @@
 # User-specific configuration files
 .config/starship.toml
+
+# Generated kickstart file (contains hashed passwords)
+kickstart/fedora-dev.ks
+
+# Generated shell init file
+.config/fedora-setup/
+
+# Test artifacts (shell-init created during tests)
+tests/.config/
+
+# Editor-specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+.pytest_cache/
+.coverage
+*.pyc
+__pycache__/
+.bats/
+
+# Temporary files
+*.tmp
+*.log

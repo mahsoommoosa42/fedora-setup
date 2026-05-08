@@ -13,10 +13,10 @@ else
     run_installer "https://astral.sh/uv/install.sh"
 fi
 
-clean_config "uv PATH"
-clean_config "uv tool PATH"
+clean_shell_init "uv PATH"
+clean_shell_init "uv tool PATH"
 
-append_if_missing "uv PATH" \
+append_to_shell_init "uv PATH" \
 '# uv — Python package manager
 export PATH="$HOME/.local/bin:$PATH"'
 
@@ -38,7 +38,7 @@ for tool in ruff mypy ipython pytest httpie; do
     fi
 done
 
-append_if_missing "uv tool PATH" \
+append_to_shell_init "uv tool PATH" \
 '# uv tool binaries
 export PATH="$HOME/.local/share/uv/tools/bin:$PATH"
 eval "$(uv generate-shell-completion bash 2>/dev/null || true)"'

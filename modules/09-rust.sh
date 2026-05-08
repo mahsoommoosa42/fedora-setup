@@ -16,9 +16,9 @@ else
         --component rust-analyzer rust-src clippy rustfmt
 fi
 
-clean_config "rustup PATH"
+clean_shell_init "rustup PATH"
 
-append_if_missing "rustup PATH" \
+append_to_shell_init "rustup PATH" \
 '. "$HOME/.cargo/env"'
 
 if [[ "${DRY_RUN:-0}" != "1" ]]; then

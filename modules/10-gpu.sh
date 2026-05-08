@@ -42,8 +42,8 @@ fi
 # ── CUDA Toolkit ──────────────────────────────────────────────────────────────
 if has_nvidia; then
     # Clean existing CUDA configuration
-    clean_config "CUDA PATH"
-    clean_config "WSL CUDA lib"
+    clean_shell_init "CUDA PATH"
+    clean_shell_init "WSL CUDA lib"
 
     info "Installing CUDA toolkit directly from NVIDIA..."
     # Get latest CUDA version from NVIDIA
@@ -76,7 +76,7 @@ if has_nvidia; then
         rm -rf "$tmp_dir"
     fi
 
-    append_if_missing "CUDA PATH" \
+    append_to_shell_init "CUDA PATH" \
 '# CUDA toolkit
 export CUDA_HOME=/usr/local/cuda
 export PATH="$CUDA_HOME/bin:$PATH"
@@ -84,7 +84,7 @@ export LD_LIBRARY_PATH="$CUDA_HOME/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"'
 
     if is_wsl; then
         # WSL2: the NVIDIA Windows driver exposes CUDA stubs under /usr/lib/wsl/lib
-        append_if_missing "WSL CUDA lib" \
+        append_to_shell_init "WSL CUDA lib" \
 '# WSL2 CUDA stubs (provided by the Windows NVIDIA driver)
 export LD_LIBRARY_PATH="/usr/lib/wsl/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"'
         info "WSL: added /usr/lib/wsl/lib to LD_LIBRARY_PATH for CUDA stubs"
@@ -105,15 +105,15 @@ dnf_install \
     mesa-vulkan-drivers \
     mesa-libGL-devel mesa-libEGL-devel
 
-clean_config "Vulkan ICD path"
+clean_shell_init "Vulkan ICD path"
 
 if is_wsl; then
     info "WSL: Vulkan via WSLg — NVIDIA ICD omitted from path"
-    append_if_missing "Vulkan ICD path" \
+    append_to_shell_init "Vulkan ICD path" \
 '# Vulkan ICD loader — WSL2 (WSLg, AMD/Intel)
 export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.x86_64.json:/usr/share/vulkan/icd.d/intel_icd.x86_64.json'
 else
-    append_if_missing "Vulkan ICD path" \
+    append_to_shell_init "Vulkan ICD path" \
 '# Vulkan ICD loader — covers NVIDIA, AMD, and Intel
 export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json:/usr/share/vulkan/icd.d/radeon_icd.x86_64.json:/usr/share/vulkan/icd.d/intel_icd.x86_64.json'
 fi

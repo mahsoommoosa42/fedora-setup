@@ -15,4 +15,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 source "$REPO_ROOT/lib/colors.sh"
 source "$REPO_ROOT/lib/detect.sh"
 source "$REPO_ROOT/lib/utils.sh"
+
+# Ensure shell-init file exists (modules may append to it)
+ensure_shell_init "${BASHRC:-$HOME/.bashrc}"
+
 source "$REPO_ROOT/modules/${SCRIPT}.sh"

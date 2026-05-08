@@ -117,17 +117,19 @@ run_module() {
 
 # ── 13-shell ──────────────────────────────────────────────────────────────────
 
-@test "13-shell: writes zoxide, fzf, eza, bat markers to BASHRC" {
+SHELL_INIT="$HOME/.config/fedora-setup/shell-init.sh"
+
+@test "13-shell: writes zoxide, fzf, eza, bat markers to shell-init" {
     IS_WSL=0 run run_module "13-shell"
     [ "$status" -eq 0 ]
-    grep -q "zoxide" "$BASHRC"
-    grep -q "fzf" "$BASHRC"
-    grep -q "eza" "$BASHRC"
-    grep -q "bat" "$BASHRC"
+    grep -q "zoxide" "$SHELL_INIT"
+    grep -q "fzf" "$SHELL_INIT"
+    grep -q "eza" "$SHELL_INIT"
+    grep -q "bat" "$SHELL_INIT"
 }
 
 @test "13-shell: is idempotent (markers written only once)" {
     IS_WSL=0 run run_module "13-shell"
     IS_WSL=0 run run_module "13-shell"
-    [ "$(grep -c 'zoxide init' "$BASHRC")" -eq 1 ]
+    [ "$(grep -c 'zoxide init' "$SHELL_INIT")" -eq 1 ]
 }

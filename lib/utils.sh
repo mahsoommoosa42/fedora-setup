@@ -3,6 +3,7 @@
 # DRY_RUN=1 can be used for safe testing without touching the real system.
 
 BASHRC="${BASHRC:-$HOME/.bashrc}"
+FEDORA_SETUP_SHELL_INIT="${FEDORA_SETUP_SHELL_INIT:-$HOME/.config/fedora-setup/shell-init.sh}"
 
 command_exists() { command -v "$1" &>/dev/null; }
 
@@ -103,6 +104,61 @@ append_if_missing() {
         info "Already in $file: $marker (skipping)"
     fi
 }
+
+# ── Shell init file management ────────────────────────────────────────────────
+
+# Ensure the shell-init file exists and is sourced from the user's shell config
+ensure_shell_init() {
+    local shell_config="$1"
+
+    # Create the init file directory
+    mkdir -p "$(dirname "$FEDORA_SETUP_SHELL_INIT")"
+
+    # Create the init file if it doesn't exist
+    if [[ ! -f "$FEDORA_SETUP_SHELL_INIT" ]]; then
+        cat > "$FEDORA_SETUP_SHELL_INIT" <<'EOF'
+# =============================================================================
+# Shell initialization for fedora-setup
+# This file is sourced by ~/.bashrc, ~/.zshrc, and ~/.bash_profile
+# All tool-specific configurations (PATH, aliases, init functions) go here
+# =============================================================================
+EOF
+    fi
+
+    # Add source line to shell config if not present
+    local source_line="source \"$FEDORA_SETUP_SHELL_INIT\""
+    if ! grep -qF "$source_line" "$shell_config" 2>/dev/null; then
+        echo "" >> "$shell_config"
+        printf '%s\n' "$source_line" >> "$shell_config"
+        success "Added source line to $shell_config"
+    fi
+}
+
+# Append content to the shell-init file with a marker
+append_to_shell_init() {
+    local marker="$1" content="$2"
+
+    if ! grep -qF "$marker" "$FEDORA_SETUP_SHELL_INIT" 2>/dev/null; then
+        echo "" >> "$FEDORA_SETUP_SHELL_INIT"
+        printf '%s\n' "$content" >> "$FEDORA_SETUP_SHELL_INIT"
+        success "Added to shell-init: $marker"
+    else
+        info "Already in shell-init: $marker (skipping)"
+    fi
+}
+
+# Remove marker from shell-init file (for CLEAN_INSTALL)
+clean_shell_init() {
+    local marker="$1"
+    if [[ "${CLEAN_INSTALL:-0}" == "1" ]]; then
+        if grep -qF "$marker" "$FEDORA_SETUP_SHELL_INIT" 2>/dev/null; then
+            info "CLEAN_INSTALL: Removing $marker from shell-init"
+            sed -i "/$marker/d" "$FEDORA_SETUP_SHELL_INIT"
+        fi
+    fi
+}
+
+# ── Legacy functions (for backward compatibility) ────────────────────────────
 
 clean_config() {
     local marker="$1" file="${2:-$BASHRC}"

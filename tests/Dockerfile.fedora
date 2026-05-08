@@ -1,4 +1,5 @@
-FROM fedora:41
+ARG FEDORA_VERSION=40
+FROM fedora:${FEDORA_VERSION}
 
 # Minimal system deps needed to run setup.sh in DRY_RUN mode or for slow tests.
 # pciutils provides lspci (used by has_nvidia detection).
