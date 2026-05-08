@@ -17,7 +17,15 @@ has_nvidia() {
         [[ "$HAS_NVIDIA" == "1" || "$HAS_NVIDIA" == "true" ]]
         return
     fi
-    lspci 2>/dev/null | grep -qi nvidia
+    # Try lspci first (works on native systems)
+    if lspci 2>/dev/null | grep -qi nvidia; then
+        return 0
+    fi
+    # In WSL2, lspci doesn't show host GPU, but nvidia-smi works if GPU is accessible
+    if command -v nvidia-smi &>/dev/null && nvidia-smi &>/dev/null; then
+        return 0
+    fi
+    return 1
 }
 
 has_systemd() {
