@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 section "13 · Shell Quality of Life"
 
+# Clean existing shell configurations if CLEAN_INSTALL is set
+clean_config "zoxide init"
+clean_config "fzf keybindings"
+clean_config "eza aliases"
+clean_config "bat alias"
+clean_config "HISTSIZE settings"
+clean_config "uv PATH"
+clean_config "bun PATH"
+clean_config "rustup PATH"
+clean_config "starship init"
+
 append_if_missing "zoxide init" \
 '# zoxide — smarter cd
 eval "$(zoxide init bash)"'

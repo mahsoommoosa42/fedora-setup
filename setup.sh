@@ -3,8 +3,9 @@
 # setup.sh — Fedora Dev Environment Setup
 # Supports: Native Fedora KDE Plasma and WSL2 Fedora
 # Usage:
-#   ./setup.sh              # real install
-#   DRY_RUN=1 ./setup.sh   # safe preview (no changes made)
+#   ./setup.sh                           # real install
+#   DRY_RUN=1 ./setup.sh                # safe preview (no changes made)
+#   CLEAN_INSTALL=1 ./setup.sh          # remove existing configs before install
 # =============================================================================
 
 set -euo pipefail
@@ -36,6 +37,7 @@ info "Environment : $(is_wsl && echo 'WSL2 Fedora' || echo 'Native Fedora')"
 info "NVIDIA GPU  : $(has_nvidia && echo 'detected' || echo 'not detected')"
 info "systemd     : $(has_systemd && echo 'available' || echo 'not available')"
 [[ "${DRY_RUN:-0}" == "1" ]] && warn "DRY_RUN mode — no changes will be made to this system"
+[[ "${CLEAN_INSTALL:-0}" == "1" ]] && warn "CLEAN_INSTALL mode — existing configs will be removed"
 
 echo ""
 

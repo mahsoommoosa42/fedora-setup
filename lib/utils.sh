@@ -103,3 +103,24 @@ append_if_missing() {
         info "Already in $file: $marker (skipping)"
     fi
 }
+
+clean_config() {
+    local marker="$1" file="${2:-$BASHRC}"
+    if [[ "${CLEAN_INSTALL:-0}" == "1" ]]; then
+        if grep -qF "$marker" "$file" 2>/dev/null; then
+            info "CLEAN_INSTALL: Removing $marker from $file"
+            # Remove lines containing the marker
+            sed -i "/$marker/d" "$file"
+        fi
+    fi
+}
+
+remove_file() {
+    local file="$1"
+    if [[ "${CLEAN_INSTALL:-0}" == "1" ]]; then
+        if [[ -f "$file" ]]; then
+            info "CLEAN_INSTALL: Removing $file"
+            rm -f "$file"
+        fi
+    fi
+}

@@ -16,6 +16,8 @@ else
         --component rust-analyzer rust-src clippy rustfmt
 fi
 
+clean_config "rustup PATH"
+
 append_if_missing "rustup PATH" \
 '. "$HOME/.cargo/env"'
 

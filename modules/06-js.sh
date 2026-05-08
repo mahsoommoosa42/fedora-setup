@@ -13,6 +13,8 @@ else
     run_installer "https://bun.sh/install"
 fi
 
+clean_config "bun PATH"
+
 append_if_missing "bun PATH" \
 '# Bun — JavaScript runtime & package manager
 export BUN_INSTALL="$HOME/.bun"

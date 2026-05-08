@@ -81,4 +81,5 @@ def test_wsl_lib_path_added(wsl_nvidia_output):
 
 def test_cuda_toolkit_installed_wsl_nvidia(wsl_nvidia_output):
     _, out = wsl_nvidia_output
-    assert "cuda-toolkit" in out
+    # CUDA is now installed directly from NVIDIA, not from Fedora repo
+    assert "CUDA" in out or "cuda" in out.lower()

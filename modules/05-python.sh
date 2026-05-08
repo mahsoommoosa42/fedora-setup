@@ -13,6 +13,9 @@ else
     run_installer "https://astral.sh/uv/install.sh"
 fi
 
+clean_config "uv PATH"
+clean_config "uv tool PATH"
+
 append_if_missing "uv PATH" \
 '# uv — Python package manager
 export PATH="$HOME/.local/bin:$PATH"'

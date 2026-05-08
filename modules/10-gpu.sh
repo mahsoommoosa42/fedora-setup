@@ -41,26 +41,40 @@ fi
 
 # ── CUDA Toolkit ──────────────────────────────────────────────────────────────
 if has_nvidia; then
-    if [[ "$FEDORA_VER" -le 39 ]]; then
-        CUDA_REPO_SLUG="fedora${FEDORA_VER}"
+    # Clean existing CUDA configuration
+    clean_config "CUDA PATH"
+    clean_config "WSL CUDA lib"
+
+    info "Installing CUDA toolkit directly from NVIDIA..."
+    # Get latest CUDA version from NVIDIA
+    CUDA_VERSION="12.6.2"
+    CUDA_RUN_FILE="cuda_${CUDA_VERSION}_linux.run"
+
+    if [[ "${DRY_RUN:-0}" == "1" ]]; then
+        echo "DRY_RUN: Would download and install CUDA ${CUDA_VERSION} from NVIDIA"
+        echo "DRY_RUN: Download URL: https://developer.download.nvidia.com/compute/cuda/${CUDA_VERSION}/local_installers/${CUDA_RUN_FILE}"
+        echo "DRY_RUN: Install options: --toolkit --silent --override"
     else
-        CUDA_REPO_SLUG="fedora39"
-        warn "Using fedora39 CUDA repo for Fedora ${FEDORA_VER} (closest available)"
+        info "Downloading CUDA ${CUDA_VERSION} installer from NVIDIA..."
+        local tmp_dir
+        tmp_dir=$(mktemp -d)
+        cd "$tmp_dir"
+
+        if command -v wget &>/dev/null; then
+            wget "https://developer.download.nvidia.com/compute/cuda/${CUDA_VERSION}/local_installers/${CUDA_RUN_FILE}"
+        elif command -v curl &>/dev/null; then
+            curl -O "https://developer.download.nvidia.com/compute/cuda/${CUDA_VERSION}/local_installers/${CUDA_RUN_FILE}"
+        else
+            die "Neither wget nor curl available to download CUDA installer"
+        fi
+
+        info "Installing CUDA toolkit (this may take several minutes)..."
+        chmod +x "$CUDA_RUN_FILE"
+        sudo ./"$CUDA_RUN_FILE" --toolkit --silent --override
+
+        cd - > /dev/null
+        rm -rf "$tmp_dir"
     fi
-
-    info "Adding NVIDIA CUDA repository (${CUDA_REPO_SLUG})..."
-    dnf_config_manager --add-repo \
-        "https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_REPO_SLUG}/x86_64/cuda-${CUDA_REPO_SLUG}.repo"
-
-    info "Installing CUDA toolkit..."
-    dnf_install \
-        cuda-toolkit \
-        cuda-libraries-devel \
-        libcufft-devel \
-        libcublas-devel \
-        libcurand-devel
-
-    dnf_install libcudnn9 || warn "libcudnn9 not found — install manually from developer.nvidia.com/cudnn"
 
     append_if_missing "CUDA PATH" \
 '# CUDA toolkit
@@ -76,7 +90,8 @@ export LD_LIBRARY_PATH="/usr/lib/wsl/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"'
         info "WSL: added /usr/lib/wsl/lib to LD_LIBRARY_PATH for CUDA stubs"
     fi
 
-    success "CUDA toolkit installed"
+    success "CUDA toolkit ${CUDA_VERSION} installed from NVIDIA"
+    info "Note: cuDNN must be installed separately from https://developer.nvidia.com/cudnn"
 fi
 
 # ── Vulkan ────────────────────────────────────────────────────────────────────
@@ -89,6 +104,8 @@ dnf_install \
     glslang shaderc \
     mesa-vulkan-drivers \
     mesa-libGL-devel mesa-libEGL-devel
+
+clean_config "Vulkan ICD path"
 
 if is_wsl; then
     info "WSL: Vulkan via WSLg — NVIDIA ICD omitted from path"
