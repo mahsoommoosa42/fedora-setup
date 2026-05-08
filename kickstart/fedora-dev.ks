@@ -1,0 +1,82 @@
+# =============================================================================
+# fedora-dev.ks — Kickstart for automated Fedora KDE Plasma install
+# Boots, partitions, installs, runs dev setup script — fully unattended.
+# Native Fedora bare-metal only. Not applicable to WSL.
+# =============================================================================
+
+# ── Installation source & method ─────────────────────────────────────────────
+graphical                        # use graphical installer (or: text)
+url --mirrorlist=https://mirrors.fedoraproject.org/mirrorlist?repo=fedora-$releasever&arch=$basearch
+
+# ── Localization ──────────────────────────────────────────────────────────────
+lang en_IN.UTF-8
+keyboard --vckeymap=us --xlayouts=us
+timezone Asia/Kolkata --utc
+
+# ── Network ───────────────────────────────────────────────────────────────────
+network --bootproto=dhcp --device=link --activate --onboot=on
+network --hostname=fedora-dev
+
+# ── Security ──────────────────────────────────────────────────────────────────
+# CHANGE THIS — generate with: python3 -c "import crypt; print(crypt.crypt('yourpassword'))"
+rootpw --lock                    # lock root, use sudo only
+user --name=moosa \
+     --groups=wheel \
+     --password=CHANGE_ME_HASHED \
+     --iscrypted \
+     --gecos="Moosa"
+
+selinux --enforcing
+firewall --enabled --service=ssh
+
+# ── Bootloader ────────────────────────────────────────────────────────────────
+# Partitioning is intentionally omitted — Anaconda will pause and
+# let you configure disks and partitions manually during install.
+# Everything else (user, packages, %post) still runs unattended.
+
+# ── Package selection ─────────────────────────────────────────────────────────
+%packages
+@kde-desktop-environment
+@development-tools
+@rpm-development-tools
+curl
+wget
+git
+bash-completion
+# explicitly exclude some bloat
+-plasma-discover
+-kdeconnectd
+-akregator
+-kmail
+-konqueror
+%end
+
+# ── Post-install: run your dev setup script ───────────────────────────────────
+%post --log=/var/log/ks-post.log
+set -euo pipefail
+
+# Copy the setup script from the ISO into the new system
+# (mkksiso embeds it under /run/install/repo/ or you can curl it)
+SCRIPT_URL="https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/setup.sh"
+SCRIPT_LOCAL="/home/moosa/setup.sh"
+
+# Option A: Download from GitHub (requires network at install time)
+curl -fsSL "$SCRIPT_URL" -o "$SCRIPT_LOCAL"
+chmod +x "$SCRIPT_LOCAL"
+
+# Run the script as your user (not root)
+# Some parts (dnf installs) need sudo — the script handles that internally
+sudo -u moosa bash "$SCRIPT_LOCAL"
+
+# Option B: If you embedded the script in the ISO via mkksiso,
+# it will be at /run/install/repo/setup.sh
+# Uncomment below and comment out Option A:
+# cp /run/install/repo/setup.sh "$SCRIPT_LOCAL"
+# chmod +x "$SCRIPT_LOCAL"
+# sudo -u moosa bash "$SCRIPT_LOCAL"
+
+echo "Post-install complete." >> /var/log/ks-post.log
+%end
+
+# ── Reboot after install ──────────────────────────────────────────────────────
+reboot

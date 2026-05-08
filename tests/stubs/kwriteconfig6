@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# This stub should NEVER be called when IS_WSL=1.
+# Tests assert its absence from output in WSL mode.
+echo "STUB: kwriteconfig6 $*"
+exit 0

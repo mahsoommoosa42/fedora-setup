@@ -1,0 +1,21 @@
+FROM fedora:41
+
+# Minimal system deps needed to run setup.sh in DRY_RUN mode or for slow tests.
+# pciutils provides lspci (used by has_nvidia detection).
+RUN dnf install -y \
+        bash \
+        curl \
+        sudo \
+        git \
+        procps \
+        which \
+        pciutils \
+        util-linux \
+    && dnf clean all
+
+# Create a non-root user with passwordless sudo (mirrors a real Fedora install).
+RUN useradd -m -s /bin/bash -G wheel dev \
+    && echo "dev ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+WORKDIR /setup
+USER dev

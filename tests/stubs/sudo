@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# In unit tests, just echo what sudo would run rather than actually escalating.
+echo "STUB: sudo $*"
+exit 0

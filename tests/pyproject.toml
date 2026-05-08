@@ -1,0 +1,20 @@
+[project]
+name = "fedora-setup-tests"
+version = "0.1.0"
+description = "Integration test suite for the fedora-setup scripts"
+requires-python = ">=3.11"
+dependencies = [
+    "pytest>=8.0",
+    "docker>=7.0",
+    "pytest-timeout>=2.3",
+    "rich>=13.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["integration"]
+markers = [
+    "slow: marks tests as slow — require a real package install (deselect with -m 'not slow')",
+]
+
+[tool.uv]
+# uv workspace root for the tests/ sub-project

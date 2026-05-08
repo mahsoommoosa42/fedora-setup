@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# rpm -E %fedora returns a version number used in 10-gpu.sh
+if [[ "$*" == *"-E"* ]]; then
+    echo "${FEDORA_VER_STUB:-41}"
+else
+    echo "STUB: rpm $*"
+fi
+exit 0
