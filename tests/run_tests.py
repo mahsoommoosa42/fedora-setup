@@ -2,12 +2,12 @@
 """
 Unified test runner for the fedora-setup suite.
 
-Runs bats unit tests and pytest Docker integration tests, then prints a
-colour-coded summary table.
+Runs the pytest unit tests and the pytest Docker integration tests, then
+prints a colour-coded summary table.
 
 Usage (from the fedora-setup/ directory):
     uv run python tests/run_tests.py                 # all fast tests
-    uv run python tests/run_tests.py --unit          # bats only
+    uv run python tests/run_tests.py --unit          # unit tests only
     uv run python tests/run_tests.py --integration   # Docker only
     uv run python tests/run_tests.py --slow          # include real-install tests
     uv run python tests/run_tests.py --no-docker     # skip Docker entirely
@@ -55,7 +55,7 @@ def _run(cmd: list[str], cwd: Path | None = None) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run fedora-setup test suite")
-    parser.add_argument("--unit", action="store_true", help="Run bats unit tests only")
+    parser.add_argument("--unit", action="store_true", help="Run pytest unit tests only")
     parser.add_argument(
         "--integration", action="store_true",
         help="Run pytest+Docker integration tests only",
@@ -66,7 +66,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--no-docker", action="store_true",
-        help="Skip Docker integration tests (bats unit tests still run)",
+        help="Skip Docker integration tests (unit tests still run)",
     )
     args = parser.parse_args()
 
@@ -76,13 +76,21 @@ def main() -> int:
 
     results: list[tuple[str, int]] = []
 
-    # ── bats unit tests ───────────────────────────────────────────────────────
+    # ── pytest unit tests ─────────────────────────────────────────────────────
     if run_unit:
         print("\n" + "═" * 50)
-        print("  Unit Tests  (bats)")
+        print("  Unit Tests  (pytest)")
         print("═" * 50)
-        code = _run(["bats", str(TESTS_DIR / "unit")], cwd=REPO_ROOT)
-        results.append(("Unit tests (bats)", code))
+        code = _run(
+            [
+                "uv", "run", "pytest",
+                str(TESTS_DIR / "unit"),
+                "-v",
+                "--timeout=60",
+            ],
+            cwd=TESTS_DIR,
+        )
+        results.append(("Unit tests (pytest)", code))
 
     # ── pytest integration tests ──────────────────────────────────────────────
     if run_integration:

@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
 # =============================================================================
-# download-iso.sh — Fedora ISO Browser & Downloader
-# Lets you navigate the official Fedora mirror directory tree, pick an ISO,
-# and downloads + SHA-256-verifies it.
+# download-iso.sh — Thin shell wrapper around
+# ``python3 -m fedora_setup.kickstart.download_iso``.
 #
-# Usage:
-#   ./download-iso.sh
-#   ./download-iso.sh --base-url https://mirror.example.com/fedora/linux/releases/
-#   ./download-iso.sh --help
+# All logic now lives in the Python module. See ``--help`` for options.
 # =============================================================================
-
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../lib/colors.sh"
+
+if ! command -v python3 &>/dev/null; then
+    echo "ERROR: python3 not found. Install with: sudo dnf install python3" >&2
+    exit 1
+fi
+
+export FEDORA_SETUP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+exec python3 -m fedora_setup.kickstart.download_iso "$@"
 
 BASE_URL="https://dl.fedoraproject.org/pub/fedora/linux/releases/"
 DOWNLOAD_DIR="${DOWNLOAD_DIR:-$HOME/Downloads/Fedora-ISOs}"

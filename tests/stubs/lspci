@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-# Output is controlled by LSPCI_STUB_OUTPUT so tests can toggle GPU detection.
-echo "${LSPCI_STUB_OUTPUT:-Intel Corporation HD Graphics 620}"
-exit 0

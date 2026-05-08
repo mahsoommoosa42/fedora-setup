@@ -1,42 +1,21 @@
 #!/usr/bin/env bash
 # =============================================================================
-# cleanup.sh — Remove all configurations added by fedora-setup
-# Reverts shell configs, removes tool config files, and optionally uninstalls packages
+# cleanup.sh — Thin shell wrapper for ``python3 -m fedora_setup.cleanup``.
+#
+# All cleanup logic lives in the Python module
+# ``fedora_setup.cleanup``. See ``--help`` for options.
 # =============================================================================
-
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/lib/colors.sh"
 
-FEDORA_SETUP_SHELL_INIT="${HOME}/.config/fedora-setup/shell-init.sh"
+if ! command -v python3 &>/dev/null; then
+    echo "ERROR: python3 not found. Install with: sudo dnf install python3" >&2
+    exit 1
+fi
 
-# ── Dry run / confirmation ───────────────────────────────────────────────────
-
-DRY_RUN=0
-REMOVE_PACKAGES=0
-
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --dry-run) DRY_RUN=1; shift ;;
-        --remove-packages) REMOVE_PACKAGES=1; shift ;;
-        --help|-h)
-            echo "Usage: $0 [OPTIONS]"
-            echo ""
-            echo "Remove all configurations added by fedora-setup."
-            echo ""
-            echo "Options:"
-            echo "  --dry-run          Show what would be removed without changing anything"
-            echo "  --remove-packages  Also remove installed packages (dangerous)"
-            echo "  --help, -h         Show this help"
-            exit 0
-            ;;
-        *)
-            warn "Unknown option: $1"
-            exit 1
-            ;;
-    esac
-done
+export FEDORA_SETUP_DIR="$SCRIPT_DIR"
+exec python3 -m fedora_setup.cleanup "$@"
 
 if [[ $DRY_RUN -eq 0 ]]; then
     echo -e "${BOLD}"

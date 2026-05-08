@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 # =============================================================================
-# prepare-ks.sh — Interactive kickstart file generator
-# Prompts for all required settings and generates a ready-to-use fedora-dev.ks
+# prepare-ks.sh — Thin shell wrapper around
+# ``python3 -m fedora_setup.kickstart.prepare_ks``.
+#
+# All logic now lives in the Python module. See ``--help`` for options.
 # =============================================================================
-
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../lib/colors.sh"
+
+if ! command -v python3 &>/dev/null; then
+    echo "ERROR: python3 not found. Install with: sudo dnf install python3" >&2
+    exit 1
+fi
+
+export FEDORA_SETUP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+exec python3 -m fedora_setup.kickstart.prepare_ks "$@"
 
 OUTPUT_FILE="$SCRIPT_DIR/fedora-dev.ks"  # Generated file (contains password hash)
 
