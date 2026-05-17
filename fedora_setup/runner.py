@@ -221,3 +221,15 @@ def remove_path(ctx: Context, path: Path | str) -> None:
         pass
     except FileNotFoundError:
         pass
+
+
+def copy_tree(ctx: Context, src: Path, dest: Path) -> None:
+    """Recursively copy all files under ``src`` into ``dest``, preserving structure."""
+    if _dry(ctx, f"copy tree {src}/ -> {dest}/"):
+        return
+    dest.mkdir(parents=True, exist_ok=True)
+    for item in src.rglob("*"):
+        if item.is_file():
+            target = dest / item.relative_to(src)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(item), str(target))
