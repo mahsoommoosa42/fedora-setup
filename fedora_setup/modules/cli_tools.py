@@ -25,7 +25,7 @@ def run(ctx: Context) -> None:
     colors.info("Note: bandwhich, hexyl, dust, sd will be installed via cargo in Section 9")
 
     colors.info("Installing starship prompt...")
-    runner.run_installer(ctx, "https://starship.rs/install.sh", "-y")
+    runner.dnf_install(ctx, "starship")
 
     starship_config = ctx.home / ".config" / "starship.toml"
     shell_init.remove_file(ctx, starship_config)
