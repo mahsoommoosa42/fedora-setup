@@ -11,10 +11,12 @@ Usage (from the fedora-setup/ directory):
     uv run python tests/run_tests.py --integration   # Docker only
     uv run python tests/run_tests.py --slow          # include real-install tests
     uv run python tests/run_tests.py --no-docker     # skip Docker entirely
+    uv run python tests/run_tests.py -i              # start interactive SSH environment
 """
 from __future__ import annotations
 
 import argparse
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -53,8 +55,99 @@ def _run(cmd: list[str], cwd: Path | None = None) -> int:
     return result.returncode
 
 
+def _interactive_env() -> int:
+    """Spin up a Fedora container with an SSH server so you can connect and explore."""
+    try:
+        import docker
+        import docker.errors
+    except ImportError:
+        print("  'docker' package not installed. Run: uv pip install docker")
+        return 1
+
+    try:
+        client = docker.from_env()
+        client.ping()
+    except Exception as exc:
+        print(f"  Docker not available: {exc}")
+        print("  Make sure Docker Desktop is running, then retry.")
+        return 1
+
+    # Build (or reuse) the test image.
+    image_name = "fedora-setup-test:42"
+    try:
+        client.images.get(image_name)
+        print(f"  Using cached image {image_name}")
+    except docker.errors.ImageNotFound:
+        print(f"  Building {image_name} (first run, this takes ~1 min) ...")
+        client.images.build(
+            path=str(REPO_ROOT),
+            dockerfile=str(TESTS_DIR / "Dockerfile.fedora"),
+            buildargs={"FEDORA_VERSION": "42"},
+            tag=image_name,
+            rm=True,
+        )
+
+    # Grab a free ephemeral port on the host.
+    with socket.socket() as _s:
+        _s.bind(("", 0))
+        host_port: int = _s.getsockname()[1]
+
+    print("  Starting container ...")
+    container = client.containers.run(
+        image_name,
+        command="sleep infinity",
+        detach=True,
+        user="root",
+        ports={"22/tcp": ("127.0.0.1", host_port)},
+        volumes={str(REPO_ROOT): {"bind": "/setup", "mode": "ro"}},
+        environment={"IS_WSL": "0", "HAS_NVIDIA": "0"},
+    )
+
+    try:
+        print("  Installing SSH server inside container ...")
+        setup_cmds = [
+            "dnf install -y openssh-server --quiet --setopt=install_weak_deps=False",
+            "ssh-keygen -A",
+            "echo 'dev:fedora' | chpasswd",
+            # Ensure password auth is allowed (Fedora's default may disable it).
+            "sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config",
+            "/usr/sbin/sshd",
+        ]
+        for cmd in setup_cmds:
+            result = container.exec_run(cmd, user="root")
+            if result.exit_code != 0:
+                print(f"  Warning: command exited {result.exit_code}: {cmd}")
+
+        print()
+        print(f"  Connecting → ssh dev@localhost -p {host_port}  (password: fedora)")
+        print( "  Repo mounted at /setup (read-only).  Exit the shell to stop the container.\n")
+        subprocess.run(
+            [
+                "ssh",
+                "-o", "StrictHostKeyChecking=no",
+                "-o", "UserKnownHostsFile=/dev/null",
+                "-o", "LogLevel=ERROR",
+                "-p", str(host_port),
+                "dev@localhost",
+            ]
+        )
+    except KeyboardInterrupt:
+        print()
+    finally:
+        print("  Stopping container ...")
+        container.stop(timeout=5)
+        container.remove()
+
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run fedora-setup test suite")
+    parser.add_argument(
+        "-i", "--interactive",
+        action="store_true",
+        help="Start an interactive Fedora container with SSH access",
+    )
     parser.add_argument("--unit", action="store_true", help="Run pytest unit tests only")
     parser.add_argument(
         "--integration", action="store_true",
@@ -69,6 +162,9 @@ def main() -> int:
         help="Skip Docker integration tests (unit tests still run)",
     )
     args = parser.parse_args()
+
+    if args.interactive:
+        return _interactive_env()
 
     # Determine which suites to run
     run_unit = args.unit or (not args.integration)
