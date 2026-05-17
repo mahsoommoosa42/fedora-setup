@@ -11,9 +11,11 @@ dependencies = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["integration"]
+testpaths = ["unit", "integration"]
+pythonpath = [".."]
 markers = [
     "slow: marks tests as slow — require a real package install (deselect with -m 'not slow')",
+    "integration: marks tests that require a Docker daemon to run",
 ]
 
 [tool.uv]

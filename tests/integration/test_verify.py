@@ -9,13 +9,10 @@ Run with:
 """
 from __future__ import annotations
 
-from pathlib import Path
-
-import docker
 import pytest
 
 from helpers import exec_in
-from conftest import PROJECT_ROOT, IMAGE_NAME, _get_or_build_image
+from conftest import PROJECT_ROOT, _get_or_build_image
 
 EXPECTED_COMMANDS = [
     "git",

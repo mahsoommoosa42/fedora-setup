@@ -3,12 +3,14 @@ FROM fedora:${FEDORA_VERSION}
 
 # Minimal system deps needed to run setup.sh in DRY_RUN mode or for slow tests.
 # pciutils provides lspci (used by has_nvidia detection).
+# python3 is required by the new Python-based setup entry point.
 RUN dnf install -y \
         bash \
         curl \
         sudo \
         git \
         procps \
+        python3 \
         which \
         pciutils \
         util-linux \
