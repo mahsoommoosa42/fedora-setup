@@ -1,0 +1,113 @@
+// Zellij configuration
+// Prefix: Alt (no tmux-style leader — Alt keys are captured here, Ctrl passes to Neovim)
+
+default_shell "bash"
+default_layout "default"
+pane_frames false
+mouse_mode true
+scroll_buffer_size 10000
+copy_on_select true
+theme "catppuccin-mocha"
+
+keybinds clear-defaults=true {
+    normal {
+        // ── Panes ────────────────────────────────────────────────────────────
+        bind "Alt n"   { NewPane "Right"; }
+        bind "Alt N"   { NewPane "Down"; }
+        bind "Alt x"   { CloseFocus; }
+        bind "Alt z"   { ToggleFocusFullscreen; }
+
+        // ── Pane focus (hjkl) ────────────────────────────────────────────────
+        bind "Alt h"   { MoveFocus "Left"; }
+        bind "Alt j"   { MoveFocus "Down"; }
+        bind "Alt k"   { MoveFocus "Up"; }
+        bind "Alt l"   { MoveFocus "Right"; }
+
+        // ── Tabs ─────────────────────────────────────────────────────────────
+        bind "Alt t"   { NewTab; }
+        bind "Alt X"   { CloseTab; }
+        bind "Alt ,"   { SwitchToMode "RenameTab"; TabNameInput 0; }
+        bind "Alt 1"   { GoToTab 1; }
+        bind "Alt 2"   { GoToTab 2; }
+        bind "Alt 3"   { GoToTab 3; }
+        bind "Alt 4"   { GoToTab 4; }
+        bind "Alt 5"   { GoToTab 5; }
+        bind "Alt ["   { GoToPreviousTab; }
+        bind "Alt ]"   { GoToNextTab; }
+
+        // ── Modes ────────────────────────────────────────────────────────────
+        bind "Alt e"   { SwitchToMode "Scroll"; }
+        bind "Alt r"   { SwitchToMode "Resize"; }
+        bind "Alt s"   { SwitchToMode "Session"; }
+
+        // ── Session ──────────────────────────────────────────────────────────
+        bind "Alt d"        { Detach; }
+        bind "Alt Ctrl q"   { Quit; }
+    }
+
+    scroll {
+        bind "Escape" "q" { SwitchToMode "Normal"; }
+        bind "j"          { ScrollDown; }
+        bind "k"          { ScrollUp; }
+        bind "d"          { HalfPageScrollDown; }
+        bind "u"          { HalfPageScrollUp; }
+        bind "Ctrl f"     { PageScrollDown; }
+        bind "Ctrl b"     { PageScrollUp; }
+        bind "G"          { ScrollToBottom; }
+        bind "g"          { ScrollToTop; }
+        bind "/"          { SwitchToMode "EnterSearch"; SearchInput 0; }
+        // Pass through Alt bindings in scroll mode too
+        bind "Alt n"   { NewPane "Right"; SwitchToMode "Normal"; }
+        bind "Alt h"   { MoveFocus "Left"; SwitchToMode "Normal"; }
+        bind "Alt j"   { MoveFocus "Down"; SwitchToMode "Normal"; }
+        bind "Alt k"   { MoveFocus "Up"; SwitchToMode "Normal"; }
+        bind "Alt l"   { MoveFocus "Right"; SwitchToMode "Normal"; }
+    }
+
+    entersearch {
+        bind "Enter"  { SwitchToMode "Search"; }
+        bind "Escape" { SwitchToMode "Scroll"; }
+    }
+
+    search {
+        bind "Escape" "q" { SwitchToMode "Normal"; }
+        bind "n"          { Search "down"; }
+        bind "N"          { Search "up"; }
+        bind "c"          { SearchToggleOption "CaseSensitivity"; }
+        bind "w"          { SearchToggleOption "Wholeword"; }
+        bind "r"          { SearchToggleOption "Regex"; }
+    }
+
+    resize {
+        bind "Escape"     { SwitchToMode "Normal"; }
+        bind "h" "Left"   { Resize "Increase Left"; }
+        bind "j" "Down"   { Resize "Increase Down"; }
+        bind "k" "Up"     { Resize "Increase Up"; }
+        bind "l" "Right"  { Resize "Increase Right"; }
+        bind "H"          { Resize "Decrease Left"; }
+        bind "J"          { Resize "Decrease Down"; }
+        bind "K"          { Resize "Decrease Up"; }
+        bind "L"          { Resize "Decrease Right"; }
+        bind "="  "+"     { Resize "Increase"; }
+        bind "-"          { Resize "Decrease"; }
+    }
+
+    renametab {
+        bind "Enter"  { SwitchToMode "Normal"; }
+        bind "Escape" { UndoRenameTab; SwitchToMode "Normal"; }
+    }
+
+    session {
+        bind "Escape" { SwitchToMode "Normal"; }
+        bind "d"      { Detach; }
+        bind "q"      { Quit; }
+    }
+}
+
+plugins {
+    tab-bar         location="zellij:tab-bar"
+    status-bar      location="zellij:status-bar"
+    strider         location="zellij:strider"
+    compact-bar     location="zellij:compact-bar"
+    session-manager location="zellij:session-manager"
+}

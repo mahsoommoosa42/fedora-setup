@@ -221,3 +221,35 @@ def remove_path(ctx: Context, path: Path | str) -> None:
         pass
     except FileNotFoundError:
         pass
+
+
+def copy_tree(ctx: Context, src: Path, dest: Path) -> None:
+    """Recursively copy all files under ``src`` into ``dest``, preserving structure."""
+    if _dry(ctx, f"copy tree {src}/ -> {dest}/"):
+        return
+    dest.mkdir(parents=True, exist_ok=True)
+    for item in src.rglob("*"):
+        if item.is_file():
+            target = dest / item.relative_to(src)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(item), str(target))
+
+
+def download_extract_tarball(ctx: Context, url: str, dest: Path) -> None:
+    """Stream-download ``url`` (tar.gz) and extract it into ``dest``."""
+    if _dry(ctx, f"curl -fsSL {url} | tar xz -C {dest}"):
+        return
+    dest.mkdir(parents=True, exist_ok=True)
+    curl = subprocess.Popen(["curl", "-fsSL", url], stdout=subprocess.PIPE)
+    try:
+        result = subprocess.run(
+            ["tar", "xz", "-C", str(dest)],
+            stdin=curl.stdout,
+            check=False,
+        )
+    finally:
+        if curl.stdout:
+            curl.stdout.close()
+        curl.wait()
+    if result.returncode != 0:
+        colors.warn(f"Failed to extract archive from {url} into {dest}")
