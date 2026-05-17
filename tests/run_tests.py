@@ -109,8 +109,13 @@ def _interactive_env() -> int:
             "dnf install -y openssh-server --quiet --setopt=install_weak_deps=False",
             "ssh-keygen -A",
             "echo 'dev:fedora' | chpasswd",
-            # Ensure password auth is allowed (Fedora's default may disable it).
-            "sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config",
+            # Drop-in overrides work across all Fedora versions and are not
+            # affected by the format of the base sshd_config.
+            "mkdir -p /etc/ssh/sshd_config.d",
+            (
+                "printf 'PasswordAuthentication yes\\nUsePAM yes\\n'"
+                " > /etc/ssh/sshd_config.d/99-interactive.conf"
+            ),
             "/usr/sbin/sshd",
         ]
         for cmd in setup_cmds:
