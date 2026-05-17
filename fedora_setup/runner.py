@@ -161,6 +161,40 @@ def usermod_groups(ctx: Context, groups: str, user: str) -> None:
     _run(["sudo", "usermod", "-aG", groups, user])
 
 
+# ── GPU / driver helpers ─────────────────────────────────────────────────────
+
+def akmods_dracut(ctx: Context) -> None:
+    if _dry(ctx, "sudo akmods --force && sudo dracut --force"):
+        return
+    subprocess.run(["sudo", "akmods", "--force"], check=False)
+    subprocess.run(["sudo", "dracut", "--force"], check=False)
+
+
+def download_file(ctx: Context, url: str, dest: Path) -> None:
+    if _dry(ctx, f"download {url} -> {dest}"):
+        return
+    if shutil.which("wget"):
+        _run(["wget", "-O", str(dest), url])
+    elif shutil.which("curl"):
+        _run(["curl", "-L", "-o", str(dest), url])
+    else:
+        colors.die("Neither wget nor curl available to download file")
+
+
+def run_sudo_script(ctx: Context, script: Path, *args: str) -> None:
+    cmd_str = f"sudo {script} {' '.join(args)}"
+    if _dry(ctx, cmd_str):
+        return
+    subprocess.run(["sudo", str(script), *args], check=False)
+
+
+def run_to_file(ctx: Context, cmd: list[str], output_file: Path) -> None:
+    if _dry(ctx, f"{' '.join(cmd)} > {output_file}"):
+        return
+    with output_file.open("w", encoding="utf-8") as f:
+        subprocess.run(cmd, stdout=f, check=False)
+
+
 # ── filesystem helpers ───────────────────────────────────────────────────────
 
 def remove_path(ctx: Context, path: Path | str) -> None:

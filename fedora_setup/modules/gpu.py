@@ -5,7 +5,6 @@ from __future__ import annotations
 import shutil
 import subprocess
 import tempfile
-import urllib.request
 from pathlib import Path
 
 from .. import colors, detect, runner, shell_init
@@ -58,11 +57,7 @@ def _install_nvidia_drivers(ctx: Context) -> None:
     )
 
     colors.info("Building NVIDIA kernel module (may take a few minutes)...")
-    if ctx.dry_run:
-        print("DRY_RUN: sudo akmods --force && sudo dracut --force")
-    else:
-        subprocess.run(["sudo", "akmods", "--force"], check=False)
-        subprocess.run(["sudo", "dracut", "--force"], check=False)
+    runner.akmods_dracut(ctx)
     colors.success("NVIDIA drivers installed — reboot required to activate")
 
 
@@ -86,28 +81,10 @@ def _install_cuda_toolkit(ctx: Context) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             installer = tmp_path / cuda_run
-            if shutil.which("wget"):
-                subprocess.run(
-                    ["wget", "-O", str(installer), cuda_url],
-                    cwd=tmp,
-                    check=True,
-                )
-            elif shutil.which("curl"):
-                subprocess.run(
-                    ["curl", "-L", "-o", str(installer), cuda_url],
-                    cwd=tmp,
-                    check=True,
-                )
-            else:
-                colors.die("Neither wget nor curl available to download CUDA installer")
-
+            runner.download_file(ctx, cuda_url, installer)
             colors.info("Installing CUDA toolkit (this may take several minutes)...")
             installer.chmod(0o755)
-            subprocess.run(
-                ["sudo", str(installer), "--toolkit", "--silent", "--override"],
-                cwd=tmp,
-                check=False,
-            )
+            runner.run_sudo_script(ctx, installer, "--toolkit", "--silent", "--override")
 
     shell_init.append_to_shell_init(
         ctx,

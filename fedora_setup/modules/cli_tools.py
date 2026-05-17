@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
-
 from .. import colors, runner, shell_init
 from ..context import Context
 
@@ -17,7 +15,7 @@ def run(ctx: Context) -> None:
     colors.info("Installing modern CLI tools from standard repos...")
     runner.dnf_install(
         ctx,
-        "gh", "direnv", "tokei", "hyperfine", "bottom", "just", "mold",
+        "gh", "direnv", "tokei", "hyperfine", "just", "mold",
     )
 
     colors.info("Enabling lazygit COPR and installing...")
@@ -36,15 +34,7 @@ def run(ctx: Context) -> None:
     if not starship_config.exists():
         colors.info("Creating default starship config with nerd-font preset...")
         starship_config.parent.mkdir(parents=True, exist_ok=True)
-        if ctx.dry_run:
-            print(f"DRY_RUN: starship preset nerd-font > {starship_config}")
-        else:
-            with starship_config.open("w", encoding="utf-8") as f:
-                subprocess.run(
-                    ["starship", "preset", "nerd-font"],
-                    stdout=f,
-                    check=False,
-                )
+        runner.run_to_file(ctx, ["starship", "preset", "nerd-font"], starship_config)
     else:
         colors.info(f"Starship config already exists at {starship_config} (skipping preset)")
 

@@ -31,6 +31,9 @@ def _file_contains(path: Path, needle: str) -> bool:
         return False
 
 
+_SOURCE_HEADER_COMMENT = "# fedora-setup managed shell init (do not edit)"
+
+
 def _remove_source_line(ctx: Context, file: Path) -> None:
     if not file.is_file():
         return
@@ -46,7 +49,10 @@ def _remove_source_line(ctx: Context, file: Path) -> None:
     colors.info(f"Removing source line from {file}")
     lines = file.read_text(encoding="utf-8").splitlines(keepends=True)
     file.write_text(
-        "".join(line for line in lines if source_line not in line),
+        "".join(
+            line for line in lines
+            if source_line not in line and _SOURCE_HEADER_COMMENT not in line
+        ),
         encoding="utf-8",
     )
 
@@ -139,7 +145,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
-    ctx = Context.from_env(dry_run=args.dry_run)
+    overrides: dict[str, object] = {}
+    if args.dry_run:
+        overrides["dry_run"] = True
+    ctx = Context.from_env(**overrides)
 
     if not ctx.dry_run:
         print(colors.BOLD)

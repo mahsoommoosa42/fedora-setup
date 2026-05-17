@@ -125,7 +125,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
-    ctx = Context.from_env(dry_run=args.dry_run, clean_install=args.clean_install)
+    overrides: dict[str, object] = {}
+    if args.dry_run:
+        overrides["dry_run"] = True
+    if args.clean_install:
+        overrides["clean_install"] = True
+    ctx = Context.from_env(**overrides)
 
     if _is_root():
         colors.die("Do not run as root. sudo will be invoked when needed.")
