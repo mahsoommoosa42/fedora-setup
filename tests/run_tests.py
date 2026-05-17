@@ -108,18 +108,20 @@ def _interactive_env() -> int:
         setup_cmds = [
             "dnf install -y openssh-server --quiet --setopt=install_weak_deps=False",
             "ssh-keygen -A",
+            # chpasswd reads user:pass from stdin — requires a real shell for the pipe.
             "echo 'dev:fedora' | chpasswd",
-            # Drop-in overrides work across all Fedora versions and are not
-            # affected by the format of the base sshd_config.
+            # Drop-in takes precedence over the base sshd_config (Fedora includes
+            # /etc/ssh/sshd_config.d/*.conf at the top of sshd_config).
+            # UsePAM no avoids PAM module failures in a minimal container.
             "mkdir -p /etc/ssh/sshd_config.d",
-            (
-                "printf 'PasswordAuthentication yes\\nUsePAM yes\\n'"
-                " > /etc/ssh/sshd_config.d/99-interactive.conf"
-            ),
+            "printf 'PasswordAuthentication yes\\nUsePAM no\\n'"
+            " > /etc/ssh/sshd_config.d/99-interactive.conf",
             "/usr/sbin/sshd",
         ]
+        # exec_run splits strings with shlex — shell builtins, pipes, and
+        # redirects only work when we invoke bash explicitly.
         for cmd in setup_cmds:
-            result = container.exec_run(cmd, user="root")
+            result = container.exec_run(["/bin/bash", "-c", cmd], user="root")
             if result.exit_code != 0:
                 print(f"  Warning: command exited {result.exit_code}: {cmd}")
 
