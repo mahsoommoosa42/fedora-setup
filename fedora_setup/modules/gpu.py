@@ -114,8 +114,8 @@ def _install_vulkan(ctx: Context) -> None:
         ctx,
         "vulkan-loader", "vulkan-loader-devel",
         "vulkan-tools", "vulkan-validation-layers",
-        "spirv-tools", "spirv-headers",
-        "glslang", "shaderc",
+        "spirv-tools", "spirv-headers-devel",
+        "glslang", "libshaderc-devel",
         "mesa-vulkan-drivers",
         "mesa-libGL-devel", "mesa-libEGL-devel",
     )
@@ -147,7 +147,9 @@ def _install_vulkan(ctx: Context) -> None:
 def _install_ffmpeg(ctx: Context) -> None:
     colors.info("Installing FFmpeg with hardware acceleration support...")
     runner.dnf_remove(ctx, "ffmpeg-free")
-    runner.dnf_install(ctx, "ffmpeg", "ffmpeg-devel", "ffmpeg-libs")
+    # --allowerasing lets dnf replace Fedora's *-free codec packages with the
+    # full RPM Fusion builds that include hardware-acceleration support.
+    runner.dnf_install(ctx, "ffmpeg", "ffmpeg-devel", "ffmpeg-libs", allowerasing=True)
 
     if detect.has_nvidia():
         try:
@@ -158,7 +160,7 @@ def _install_ffmpeg(ctx: Context) -> None:
     runner.dnf_install(
         ctx,
         "libva", "libva-utils", "libva-devel",
-        "libvdpau", "libvdpau-va-gl",
+        "libvdpau",
         "gstreamer1-vaapi",
     )
     colors.success("FFmpeg installed — verify with: ffmpeg -version && ffmpeg -hwaccels")

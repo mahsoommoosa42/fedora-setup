@@ -47,12 +47,15 @@ def _run(cmd: list[str], *, check: bool = True) -> int:
 
 # ── dnf wrappers ─────────────────────────────────────────────────────────────
 
-def dnf_install(ctx: Context, *packages: str) -> None:
+def dnf_install(ctx: Context, *packages: str, allowerasing: bool = False) -> None:
     if not packages:
         return
     if _dry(ctx, f"sudo dnf install -y {_format_args(packages)}"):
         return
-    _run(["sudo", "dnf", "install", "-y", *packages])
+    cmd = ["sudo", "dnf", "install", "-y", *packages]
+    if allowerasing:
+        cmd.append("--allowerasing")
+    _run(cmd)
 
 
 def dnf_upgrade(ctx: Context) -> None:
@@ -81,7 +84,10 @@ def dnf_remove(ctx: Context, *packages: str) -> None:
 def dnf_group_update(ctx: Context, *groups: str) -> None:
     if _dry(ctx, f"sudo dnf groupupdate -y {_format_args(groups)}"):
         return
-    _run(["sudo", "dnf", "groupupdate", "-y", *groups])
+    # dnf5 exits 2 when there is nothing to update — that is not an error.
+    result = subprocess.run(["sudo", "dnf", "groupupdate", "-y", *groups], check=False)
+    if result.returncode not in (0, 2):
+        raise subprocess.CalledProcessError(result.returncode, ["sudo", "dnf", "groupupdate"])
 
 
 def dnf_config_manager(ctx: Context, *args: str) -> None:
@@ -106,11 +112,11 @@ def systemctl_enable(ctx: Context, *services: str) -> None:
         )
 
 
-def cargo_install(ctx: Context, *crates: str) -> None:
+def cargo_install(ctx: Context, *crates: str, cargo: str = "cargo") -> None:
     if _dry(ctx, f"cargo install --locked {_format_args(crates)}"):
         return
     result = subprocess.run(
-        ["cargo", "install", "--locked", *crates],
+        [cargo, "install", "--locked", *crates],
         check=False,
     )
     if result.returncode != 0:

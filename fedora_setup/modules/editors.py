@@ -16,10 +16,10 @@ gpgkey=https://packages.microsoft.com/keys/microsoft.asc"""
 
 WINDSURF_REPO = """[windsurf]
 name=Windsurf Editor
-baseurl=https://windsurf-stable.codeiumdata.com/wVxpZuBSvCwhYjtp/rpm/stable/x86_64
+baseurl=https://windsurf-stable.codeiumdata.com/wVxQEIWkwPUEAGf3/yum/repo/
 enabled=1
 gpgcheck=1
-gpgkey=https://windsurf-stable.codeiumdata.com/wVxpZuBSvCwhYjtp/windsurf.gpg"""
+gpgkey=https://windsurf-stable.codeiumdata.com/wVxQEIWkwPUEAGf3/yum/RPM-GPG-KEY-windsurf"""
 
 
 def run(ctx: Context) -> None:
@@ -55,7 +55,7 @@ def run(ctx: Context) -> None:
     colors.info("Adding Windsurf repository...")
     runner.rpm_import(
         ctx,
-        "https://windsurf-stable.codeiumdata.com/wVxpZuBSvCwhYjtp/windsurf.gpg",
+        "https://windsurf-stable.codeiumdata.com/wVxQEIWkwPUEAGf3/yum/RPM-GPG-KEY-windsurf",
     )
     runner.sudo_tee_repo(ctx, "/etc/yum.repos.d/windsurf.repo", WINDSURF_REPO)
     runner.dnf_install(ctx, "windsurf")
