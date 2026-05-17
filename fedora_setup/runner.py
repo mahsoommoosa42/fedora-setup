@@ -118,16 +118,19 @@ def cargo_install(ctx: Context, *crates: str) -> None:
 
 
 def run_installer(ctx: Context, url: str, *args: str) -> None:
-    """Pipe ``curl -fsSL <url> | bash -s -- <args>`` (or the dry-run echo)."""
-    if _dry(ctx, f"curl -fsSL {url} | bash -s -- {_format_args(args)}"):
+    """Pipe ``curl -fsSL <url> | sh -s -- <args>`` (or the dry-run echo).
+
+    Uses ``sh`` (not ``bash``) because many install scripts (e.g. starship)
+    explicitly reject being run with bash to avoid non-POSIX behaviour.
+    """
+    if _dry(ctx, f"curl -fsSL {url} | sh -s -- {_format_args(args)}"):
         return
     curl = subprocess.Popen(
         ["curl", "-fsSL", url],
         stdout=subprocess.PIPE,
     )
     try:
-        bash_cmd = ["bash", "-s", "--", *args]
-        result = subprocess.run(bash_cmd, stdin=curl.stdout, check=False)
+        result = subprocess.run(["sh", "-s", "--", *args], stdin=curl.stdout, check=False)
     finally:
         if curl.stdout is not None:
             curl.stdout.close()
