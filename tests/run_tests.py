@@ -73,7 +73,7 @@ def _interactive_env(dry_run: bool = False) -> int:
         return 1
 
     # Build (or reuse) the test image.
-    image_name = "fedora-setup-test:42"
+    image_name = "fedora-setup-test:44"
     try:
         client.images.get(image_name)
         print(f"  Using cached image {image_name}")
@@ -82,7 +82,7 @@ def _interactive_env(dry_run: bool = False) -> int:
         client.images.build(
             path=str(REPO_ROOT),
             dockerfile=str(TESTS_DIR / "Dockerfile.fedora"),
-            buildargs={"FEDORA_VERSION": "42"},
+            buildargs={"FEDORA_VERSION": "44"},
             tag=image_name,
             rm=True,
         )
