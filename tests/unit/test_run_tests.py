@@ -49,6 +49,11 @@ def _make_mock_docker(image_found: bool = True):
         client.images.build.return_value = (MagicMock(), [])
     client.containers.run.return_value = container
 
+    # Low-level API used for streaming setup.sh output + exit code.
+    client.api.exec_create.return_value = {"Id": "fake-exec-id"}
+    client.api.exec_start.return_value = iter([])  # empty byte stream
+    client.api.exec_inspect.return_value = {"ExitCode": 0}
+
     docker_mod = MagicMock()
     docker_mod.from_env.return_value = client
     # Make ImageNotFound a real exception subclass so except clauses work.
@@ -90,7 +95,7 @@ def test_container_not_started_as_root(
     docker_mod, client, _container = _make_mock_docker()
     monkeypatch.setitem(sys.modules, "docker", docker_mod)
     monkeypatch.setitem(sys.modules, "docker.errors", docker_mod.errors)
-    with patch("subprocess.run"):
+    with patch("builtins.input", return_value=None):
         run_tests._interactive_env(dry_run=True)
     _, kwargs = client.containers.run.call_args
     assert kwargs.get("user") not in ("root", "0")
@@ -103,7 +108,7 @@ def test_port_bound_to_localhost(
     docker_mod, client, _container = _make_mock_docker()
     monkeypatch.setitem(sys.modules, "docker", docker_mod)
     monkeypatch.setitem(sys.modules, "docker.errors", docker_mod.errors)
-    with patch("subprocess.run"):
+    with patch("builtins.input", return_value=None):
         run_tests._interactive_env(dry_run=True)
     _, kwargs = client.containers.run.call_args
     host, _port = kwargs["ports"]["22/tcp"]
@@ -116,7 +121,7 @@ def test_dry_run_sets_env_var(
     docker_mod, client, _container = _make_mock_docker()
     monkeypatch.setitem(sys.modules, "docker", docker_mod)
     monkeypatch.setitem(sys.modules, "docker.errors", docker_mod.errors)
-    with patch("subprocess.run"):
+    with patch("builtins.input", return_value=None):
         run_tests._interactive_env(dry_run=True)
     _, kwargs = client.containers.run.call_args
     assert kwargs["environment"].get("DRY_RUN") == "1"
@@ -128,7 +133,7 @@ def test_real_run_omits_dry_run_env_var(
     docker_mod, client, _container = _make_mock_docker()
     monkeypatch.setitem(sys.modules, "docker", docker_mod)
     monkeypatch.setitem(sys.modules, "docker.errors", docker_mod.errors)
-    with patch("subprocess.run"):
+    with patch("builtins.input", return_value=None):
         run_tests._interactive_env(dry_run=False)
     _, kwargs = client.containers.run.call_args
     assert "DRY_RUN" not in kwargs["environment"]
@@ -140,17 +145,20 @@ def test_real_run_omits_dry_run_env_var(
 def test_setup_runs_before_sshd(
     run_tests: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """setup.sh must complete before sshd is started."""
-    docker_mod, _client, container = _make_mock_docker()
+    """setup.sh must be submitted via exec_create before any exec_run SSH commands."""
+    docker_mod, client, container = _make_mock_docker()
     monkeypatch.setitem(sys.modules, "docker", docker_mod)
     monkeypatch.setitem(sys.modules, "docker.errors", docker_mod.errors)
-    with patch("subprocess.run"):
+    with patch("builtins.input", return_value=None):
         run_tests._interactive_env(dry_run=True)
 
-    cmds = [str(c[0][0]) for c in container.exec_run.call_args_list]
-    setup_idx = next(i for i, c in enumerate(cmds) if "setup.sh" in c)
-    sshd_idx = next(i for i, c in enumerate(cmds) if "sshd" in c and "openssh" not in c)
-    assert setup_idx < sshd_idx
+    # setup.sh is submitted via client.api.exec_create (low-level streaming API).
+    setup_cmd = client.api.exec_create.call_args[0][1]
+    assert "/setup/setup.sh" in setup_cmd
+
+    # SSH setup commands (including sshd) come via container.exec_run afterwards.
+    ssh_cmds = [str(c[0][0]) for c in container.exec_run.call_args_list]
+    assert any("sshd" in c and "openssh" not in c for c in ssh_cmds)
 
 
 def test_ssh_setup_cmds_use_bash(
@@ -160,7 +168,7 @@ def test_ssh_setup_cmds_use_bash(
     docker_mod, _client, container = _make_mock_docker()
     monkeypatch.setitem(sys.modules, "docker", docker_mod)
     monkeypatch.setitem(sys.modules, "docker.errors", docker_mod.errors)
-    with patch("subprocess.run"):
+    with patch("builtins.input", return_value=None):
         run_tests._interactive_env(dry_run=True)
 
     for call in container.exec_run.call_args_list:
@@ -173,14 +181,29 @@ def test_ssh_setup_cmds_use_bash(
 # ── _interactive_env: cleanup ─────────────────────────────────────────────────
 
 
-def test_container_removed_after_ssh_exits(
+def test_container_killed_if_setup_fails(
+    run_tests: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If setup.sh exits non-zero the container must be stopped before returning."""
+    docker_mod, client, container = _make_mock_docker()
+    client.api.exec_inspect.return_value = {"ExitCode": 1}
+    monkeypatch.setitem(sys.modules, "docker", docker_mod)
+    monkeypatch.setitem(sys.modules, "docker.errors", docker_mod.errors)
+    monkeypatch.setattr("builtins.input", lambda: None)
+    result = run_tests._interactive_env(dry_run=True)
+    assert result == 1
+    container.stop.assert_called_once()
+    container.remove.assert_called_once()
+
+
+def test_container_removed_after_user_exits(
     run_tests: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     docker_mod, _client, container = _make_mock_docker()
     monkeypatch.setitem(sys.modules, "docker", docker_mod)
     monkeypatch.setitem(sys.modules, "docker.errors", docker_mod.errors)
-    with patch("subprocess.run"):
-        run_tests._interactive_env(dry_run=True)
+    monkeypatch.setattr("builtins.input", lambda: None)
+    run_tests._interactive_env(dry_run=True)
     container.stop.assert_called_once()
     container.remove.assert_called_once()
 
@@ -191,7 +214,7 @@ def test_container_removed_on_keyboard_interrupt(
     docker_mod, _client, container = _make_mock_docker()
     monkeypatch.setitem(sys.modules, "docker", docker_mod)
     monkeypatch.setitem(sys.modules, "docker.errors", docker_mod.errors)
-    with patch("subprocess.run", side_effect=KeyboardInterrupt):
-        run_tests._interactive_env(dry_run=True)
+    monkeypatch.setattr("builtins.input", lambda: (_ for _ in ()).throw(KeyboardInterrupt()))
+    run_tests._interactive_env(dry_run=True)
     container.stop.assert_called_once()
     container.remove.assert_called_once()

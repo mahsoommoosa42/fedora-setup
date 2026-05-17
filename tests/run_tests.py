@@ -111,16 +111,22 @@ def _interactive_env(dry_run: bool = False) -> int:
         label = "DRY_RUN preview" if dry_run else "full install — this may take a while"
         print(f"  Running fedora-setup ({label}) ...")
         print("  " + "─" * 56)
-        setup_result = container.exec_run(
+        # Use the low-level API so we can stream output AND read the exit code
+        # afterwards. exec_run(stream=True) always returns exit_code=None.
+        exec_id = client.api.exec_create(
+            container.id,
             ["/bin/bash", "/setup/setup.sh"],
-            stream=True,
             user="dev",
-            environment=env,
-        )
-        for chunk in setup_result.output:
+            environment=[f"{k}={v}" for k, v in env.items()],
+        )["Id"]
+        for chunk in client.api.exec_start(exec_id, stream=True):
             sys.stdout.buffer.write(chunk)
             sys.stdout.buffer.flush()
         print("  " + "─" * 56)
+        setup_exit = client.api.exec_inspect(exec_id)["ExitCode"]
+        if setup_exit != 0:
+            print(f"\n  fedora-setup failed (exit {setup_exit}) — stopping container.\n")
+            return 1
 
         # ── Install SSH server (run as root via exec) ─────────────────────────
         print("  Installing SSH server ...")
@@ -144,18 +150,13 @@ def _interactive_env(dry_run: bool = False) -> int:
                 print(f"  Warning: command exited {result.exit_code}: {cmd}")
 
         print()
-        print(f"  Connecting → ssh dev@localhost -p {host_port}  (password: fedora)")
-        print( "  Exit the shell to stop and remove the container.\n")
-        subprocess.run(
-            [
-                "ssh",
-                "-o", "StrictHostKeyChecking=no",
-                "-o", "UserKnownHostsFile=/dev/null",
-                "-o", "LogLevel=ERROR",
-                "-p", str(host_port),
-                "dev@localhost",
-            ]
-        )
+        print("  ┌─ Environment ready ─────────────────────────────────────────────────┐")
+        print(f"  │  ssh dev@localhost -p {host_port} -o StrictHostKeyChecking=no        │")
+        print( "  │  Password: fedora                                                   │")
+        print( "  └─────────────────────────────────────────────────────────────────────┘")
+        print()
+        print("  Press Enter to stop and remove the container.")
+        input()
     except KeyboardInterrupt:
         print()
     finally:
