@@ -35,16 +35,14 @@ def test_base_emits_dry_run_dnf(
 # ── 02 cli_tools ─────────────────────────────────────────────────────────────
 
 
-def test_cli_tools_installs_starship_via_dnf(
+def test_cli_tools_installs_starship(
     ctx: Context, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """starship must be installed via dnf, not the curl-pipe-bash installer."""
+    """starship installation must be attempted via the official URL installer."""
     _run("02-cli", ctx)
     out = capsys.readouterr().out
     assert "starship" in out
-    # The old curl installer should not be used — it fails in containers.
-    assert "starship.rs/install.sh" not in out
-    assert "DRY_RUN: sudo dnf install -y" in out
+    assert "starship.rs/install.sh" in out
 
 
 # ── 04 kernel ─────────────────────────────────────────────────────────────────
