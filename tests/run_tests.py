@@ -55,8 +55,8 @@ def _run(cmd: list[str], cwd: Path | None = None) -> int:
     return result.returncode
 
 
-def _interactive_env() -> int:
-    """Spin up a Fedora container with an SSH server so you can connect and explore."""
+def _interactive_env(dry_run: bool = False) -> int:
+    """Run fedora-setup in a Fedora container, then open an SSH session to explore."""
     try:
         import docker
         import docker.errors
@@ -92,42 +92,60 @@ def _interactive_env() -> int:
         _s.bind(("", 0))
         host_port: int = _s.getsockname()[1]
 
+    # Run as the 'dev' user (defined in the Dockerfile) — setup.sh rejects root.
     print("  Starting container ...")
+    env = {"IS_WSL": "0", "HAS_NVIDIA": "0"}
+    if dry_run:
+        env["DRY_RUN"] = "1"
     container = client.containers.run(
         image_name,
         command="sleep infinity",
         detach=True,
-        user="root",
         ports={"22/tcp": ("127.0.0.1", host_port)},
         volumes={str(REPO_ROOT): {"bind": "/setup", "mode": "ro"}},
-        environment={"IS_WSL": "0", "HAS_NVIDIA": "0"},
+        environment=env,
     )
 
     try:
-        print("  Installing SSH server inside container ...")
-        setup_cmds = [
+        # ── Run fedora-setup ──────────────────────────────────────────────────
+        label = "DRY_RUN preview" if dry_run else "full install — this may take a while"
+        print(f"  Running fedora-setup ({label}) ...")
+        print("  " + "─" * 56)
+        setup_result = container.exec_run(
+            ["/bin/bash", "/setup/setup.sh"],
+            stream=True,
+            user="dev",
+            environment=env,
+        )
+        for chunk in setup_result.output:
+            sys.stdout.buffer.write(chunk)
+            sys.stdout.buffer.flush()
+        print("  " + "─" * 56)
+
+        # ── Install SSH server (run as root via exec) ─────────────────────────
+        print("  Installing SSH server ...")
+        # exec_run splits strings with shlex — shell builtins, pipes, and
+        # redirects only work when we invoke bash explicitly.
+        ssh_cmds = [
             "dnf install -y openssh-server --quiet --setopt=install_weak_deps=False",
             "ssh-keygen -A",
-            # chpasswd reads user:pass from stdin — requires a real shell for the pipe.
             "echo 'dev:fedora' | chpasswd",
-            # Drop-in takes precedence over the base sshd_config (Fedora includes
-            # /etc/ssh/sshd_config.d/*.conf at the top of sshd_config).
-            # UsePAM no avoids PAM module failures in a minimal container.
+            # Drop-in overrides the base sshd_config (Fedora's Include is at the
+            # top, so drop-ins take precedence). UsePAM no avoids PAM failures in
+            # a minimal container without a full PAM stack.
             "mkdir -p /etc/ssh/sshd_config.d",
             "printf 'PasswordAuthentication yes\\nUsePAM no\\n'"
             " > /etc/ssh/sshd_config.d/99-interactive.conf",
             "/usr/sbin/sshd",
         ]
-        # exec_run splits strings with shlex — shell builtins, pipes, and
-        # redirects only work when we invoke bash explicitly.
-        for cmd in setup_cmds:
+        for cmd in ssh_cmds:
             result = container.exec_run(["/bin/bash", "-c", cmd], user="root")
             if result.exit_code != 0:
                 print(f"  Warning: command exited {result.exit_code}: {cmd}")
 
         print()
         print(f"  Connecting → ssh dev@localhost -p {host_port}  (password: fedora)")
-        print( "  Repo mounted at /setup (read-only).  Exit the shell to stop the container.\n")
+        print( "  Exit the shell to stop and remove the container.\n")
         subprocess.run(
             [
                 "ssh",
@@ -153,7 +171,12 @@ def main() -> int:
     parser.add_argument(
         "-i", "--interactive",
         action="store_true",
-        help="Start an interactive Fedora container with SSH access",
+        help="Run fedora-setup in a Fedora container, then open an SSH session",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="With -i: run fedora-setup in DRY_RUN mode (fast preview, no packages installed)",
     )
     parser.add_argument("--unit", action="store_true", help="Run pytest unit tests only")
     parser.add_argument(
@@ -171,7 +194,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.interactive:
-        return _interactive_env()
+        return _interactive_env(dry_run=args.dry_run)
 
     # Determine which suites to run
     run_unit = args.unit or (not args.integration)
