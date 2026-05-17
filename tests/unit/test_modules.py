@@ -118,16 +118,18 @@ def test_editors_skips_vscode_on_wsl(
     out = capsys.readouterr().out
     assert "WSL: skipping VS Code" in out
     assert "vscode.repo" not in out
-    assert "windsurf.repo" not in out
+    assert "windsurf" not in out
 
 
-def test_editors_includes_vscode_on_native(
+def test_editors_includes_vscode_and_devin_on_native(
     ctx: Context, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("IS_WSL", "0")
     _run("11-editors", ctx)
     out = capsys.readouterr().out
     assert "vscode.repo" in out
+    assert "cli.devin.ai" in out
+    assert "windsurf" not in out
 
 
 # ── 13 shell ──────────────────────────────────────────────────────────────────
