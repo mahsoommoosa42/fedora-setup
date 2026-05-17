@@ -106,6 +106,10 @@ def test_run_installer_dry_run(
     out = capsys.readouterr().out
     assert "DRY_RUN" in out
     assert "example.com" in out
+    # Must use sh, not bash — many install scripts (e.g. starship) explicitly
+    # reject bash to avoid non-POSIX behaviour.
+    assert "sh -s" in out
+    assert "bash -s" not in out
 
 
 def test_rpm_import_dry_run(

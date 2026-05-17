@@ -25,7 +25,21 @@ def run(ctx: Context) -> None:
     colors.info("Note: bandwhich, hexyl, dust, sd will be installed via cargo in Section 9")
 
     colors.info("Installing starship prompt...")
-    runner.run_installer(ctx, "https://starship.rs/install.sh", "-y")
+    local_bin = ctx.home / ".local" / "bin"
+    if not ctx.dry_run:
+        local_bin.mkdir(parents=True, exist_ok=True)
+    # Install to ~/.local/bin to avoid the sudo requirement for /usr/local/bin.
+    # The starship script also requires sh (not bash) to avoid POSIX warnings.
+    runner.run_installer(
+        ctx, "https://starship.rs/install.sh", "-y", "--bin-dir", str(local_bin),
+    )
+
+    # Ensure ~/.local/bin is on PATH before starship init runs.
+    shell_init.append_to_shell_init(
+        ctx,
+        "local bin path",
+        'export PATH="$HOME/.local/bin:$PATH"',
+    )
 
     starship_config = ctx.home / ".config" / "starship.toml"
     shell_init.remove_file(ctx, starship_config)
@@ -34,7 +48,9 @@ def run(ctx: Context) -> None:
     if not starship_config.exists():
         colors.info("Creating default starship config with nerd-font preset...")
         starship_config.parent.mkdir(parents=True, exist_ok=True)
-        runner.run_to_file(ctx, ["starship", "preset", "nerd-font"], starship_config)
+        # Use the absolute path — ~/.local/bin isn't on PATH in the current
+        # process yet (it's added to shell_init for future sessions).
+        runner.run_to_file(ctx, [str(local_bin / "starship"), "preset", "nerd-font"], starship_config)
     else:
         colors.info(f"Starship config already exists at {starship_config} (skipping preset)")
 

@@ -23,7 +23,7 @@ BANNER = """\
   \u2502       Fedora KDE Dev Environment Setup      \u2502
   \u2502  C++ \u00b7 Python \u00b7 JS \u00b7 Rust \u00b7 Kernel          \u2502
   \u2502  CUDA \u00b7 Vulkan \u00b7 FFmpeg                     \u2502
-  \u2502  Claude Code \u00b7 Fonts \u00b7 VS Code \u00b7 Windsurf   \u2502
+  \u2502  Claude Code \u00b7 Devin \u00b7 Fonts \u00b7 VS Code      \u2502
   \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\
 """
 
@@ -102,7 +102,7 @@ def _print_summary(ctx: Context) -> None:
     print(f"    {colors.BLUE}Vulkan{colors.RESET}   \u2192  vulkaninfo --summary / glslc (via shaderc)")
     print(f"    {colors.BLUE}FFmpeg{colors.RESET}   \u2192  ffmpeg -hwaccels")
 
-    ai_tools = "claude" if detect.is_wsl() else "claude / windsurf / code"
+    ai_tools = "claude / devin" if detect.is_wsl() else "claude / devin / code"
     print(f"    {colors.BLUE}AI{colors.RESET}       \u2192  {ai_tools}")
 
     print(f"    {colors.BLUE}Git TUI{colors.RESET}  \u2192  lazygit")

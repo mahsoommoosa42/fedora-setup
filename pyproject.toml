@@ -1,0 +1,33 @@
+[project]
+name = "fedora-setup"
+version = "0.2.0"
+description = "Configure a Fedora developer workstation (native KDE Plasma or WSL2)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+fedora-setup = "fedora_setup.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-timeout>=2.3",
+    "docker>=7.0",
+    "rich>=13.0",
+]
+
+[tool.uv.workspace]
+members = ["tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+pythonpath = ["."]
+markers = [
+    "slow: marks tests as slow — require a real package install (deselect with -m 'not slow')",
+    "integration: marks tests that require a Docker daemon to run",
+]

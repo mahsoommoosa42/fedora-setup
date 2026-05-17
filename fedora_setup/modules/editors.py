@@ -14,13 +14,6 @@ enabled=1
 gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc"""
 
-WINDSURF_REPO = """[windsurf]
-name=Windsurf Editor
-baseurl=https://windsurf-stable.codeiumdata.com/wVxpZuBSvCwhYjtp/rpm/stable/x86_64
-enabled=1
-gpgcheck=1
-gpgkey=https://windsurf-stable.codeiumdata.com/wVxpZuBSvCwhYjtp/windsurf.gpg"""
-
 
 def run(ctx: Context) -> None:
     colors.section("11 · Editors & LSP Support")
@@ -41,9 +34,9 @@ def run(ctx: Context) -> None:
     colors.success("clangd and pyright installed")
 
     if detect.is_wsl():
-        colors.info("WSL: skipping VS Code and Windsurf RPM installation")
-        colors.info("  \u2192 Install VS Code for Windows and use the Remote-WSL extension")
-        colors.info("  \u2192 Or run: curl -fsSL https://code-server.dev/install.sh | sh")
+        colors.info("WSL: skipping VS Code RPM installation")
+        colors.info("  → Install VS Code for Windows and use the Remote-WSL extension")
+        colors.info("  → Or run: curl -fsSL https://code-server.dev/install.sh | sh")
         return
 
     colors.info("Adding VS Code repository...")
@@ -52,11 +45,6 @@ def run(ctx: Context) -> None:
     runner.dnf_install(ctx, "code")
     colors.success("VS Code installed — launch with: code")
 
-    colors.info("Adding Windsurf repository...")
-    runner.rpm_import(
-        ctx,
-        "https://windsurf-stable.codeiumdata.com/wVxpZuBSvCwhYjtp/windsurf.gpg",
-    )
-    runner.sudo_tee_repo(ctx, "/etc/yum.repos.d/windsurf.repo", WINDSURF_REPO)
-    runner.dnf_install(ctx, "windsurf")
-    colors.success("Windsurf installed — launch with: windsurf")
+    colors.info("Installing Devin CLI...")
+    runner.run_installer(ctx, "https://cli.devin.ai/install.sh")
+    colors.success("Devin CLI installed — run: devin")

@@ -22,13 +22,11 @@ def run(ctx: Context) -> None:
     )
 
     colors.info("Installing common C++ libraries...")
-    # tbb-devel was renamed to onetbb-devel in Fedora 36+
-    # google-benchmark-devel is the Fedora package for benchmark-devel
     runner.dnf_install(
         ctx,
         "boost-devel", "fmt-devel", "abseil-cpp-devel",
         "catch2-devel", "gtest-devel",
-        "google-benchmark-devel", "onetbb-devel",
+        "google-benchmark-devel", "tbb-devel",
     )
 
     shell_init.clean_shell_init(ctx, "ccache PATH")

@@ -32,6 +32,19 @@ def test_base_emits_dry_run_dnf(
     assert "DRY_RUN: sudo dnf" in out
 
 
+# ── 02 cli_tools ─────────────────────────────────────────────────────────────
+
+
+def test_cli_tools_installs_starship(
+    ctx: Context, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """starship installation must be attempted via the official URL installer."""
+    _run("02-cli", ctx)
+    out = capsys.readouterr().out
+    assert "starship" in out
+    assert "starship.rs/install.sh" in out
+
+
 # ── 04 kernel ─────────────────────────────────────────────────────────────────
 
 
@@ -105,16 +118,18 @@ def test_editors_skips_vscode_on_wsl(
     out = capsys.readouterr().out
     assert "WSL: skipping VS Code" in out
     assert "vscode.repo" not in out
-    assert "windsurf.repo" not in out
+    assert "windsurf" not in out
 
 
-def test_editors_includes_vscode_on_native(
+def test_editors_includes_vscode_and_devin_on_native(
     ctx: Context, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("IS_WSL", "0")
     _run("11-editors", ctx)
     out = capsys.readouterr().out
     assert "vscode.repo" in out
+    assert "cli.devin.ai" in out
+    assert "windsurf" not in out
 
 
 # ── 13 shell ──────────────────────────────────────────────────────────────────

@@ -11,10 +11,12 @@ Usage (from the fedora-setup/ directory):
     uv run python tests/run_tests.py --integration   # Docker only
     uv run python tests/run_tests.py --slow          # include real-install tests
     uv run python tests/run_tests.py --no-docker     # skip Docker entirely
+    uv run python tests/run_tests.py -i              # start interactive SSH environment
 """
 from __future__ import annotations
 
 import argparse
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -53,8 +55,130 @@ def _run(cmd: list[str], cwd: Path | None = None) -> int:
     return result.returncode
 
 
+def _interactive_env(dry_run: bool = False) -> int:
+    """Run fedora-setup in a Fedora container, then open an SSH session to explore."""
+    try:
+        import docker
+        import docker.errors
+    except ImportError:
+        print("  'docker' package not installed. Run: uv pip install docker")
+        return 1
+
+    try:
+        client = docker.from_env()
+        client.ping()
+    except Exception as exc:
+        print(f"  Docker not available: {exc}")
+        print("  Make sure Docker Desktop is running, then retry.")
+        return 1
+
+    # Build (or reuse) the test image.
+    image_name = "fedora-setup-test:44"
+    try:
+        client.images.get(image_name)
+        print(f"  Using cached image {image_name}")
+    except docker.errors.ImageNotFound:
+        print(f"  Building {image_name} (first run, this takes ~1 min) ...")
+        client.images.build(
+            path=str(REPO_ROOT),
+            dockerfile=str(TESTS_DIR / "Dockerfile.fedora"),
+            buildargs={"FEDORA_VERSION": "44"},
+            tag=image_name,
+            rm=True,
+        )
+
+    # Grab a free ephemeral port on the host.
+    with socket.socket() as _s:
+        _s.bind(("", 0))
+        host_port: int = _s.getsockname()[1]
+
+    # Run as the 'dev' user (defined in the Dockerfile) — setup.sh rejects root.
+    print("  Starting container ...")
+    env = {"IS_WSL": "0", "HAS_NVIDIA": "0"}
+    if dry_run:
+        env["DRY_RUN"] = "1"
+    container = client.containers.run(
+        image_name,
+        command="sleep infinity",
+        detach=True,
+        ports={"22/tcp": ("127.0.0.1", host_port)},
+        volumes={str(REPO_ROOT): {"bind": "/setup", "mode": "ro"}},
+        environment=env,
+    )
+
+    try:
+        # ── Run fedora-setup ──────────────────────────────────────────────────
+        label = "DRY_RUN preview" if dry_run else "full install — this may take a while"
+        print(f"  Running fedora-setup ({label}) ...")
+        print("  " + "─" * 56)
+        # Use the low-level API so we can stream output AND read the exit code
+        # afterwards. exec_run(stream=True) always returns exit_code=None.
+        exec_id = client.api.exec_create(
+            container.id,
+            ["/bin/bash", "/setup/setup.sh"],
+            user="dev",
+            environment=[f"{k}={v}" for k, v in env.items()],
+        )["Id"]
+        for chunk in client.api.exec_start(exec_id, stream=True):
+            sys.stdout.buffer.write(chunk)
+            sys.stdout.buffer.flush()
+        print("  " + "─" * 56)
+        setup_exit = client.api.exec_inspect(exec_id)["ExitCode"]
+        if setup_exit != 0:
+            print(f"\n  fedora-setup failed (exit {setup_exit}) — stopping container.\n")
+            return 1
+
+        # ── Install SSH server (run as root via exec) ─────────────────────────
+        print("  Installing SSH server ...")
+        # exec_run splits strings with shlex — shell builtins, pipes, and
+        # redirects only work when we invoke bash explicitly.
+        ssh_cmds = [
+            "dnf install -y openssh-server --quiet --setopt=install_weak_deps=False",
+            "ssh-keygen -A",
+            "echo 'dev:fedora' | chpasswd",
+            # Drop-in overrides the base sshd_config (Fedora's Include is at the
+            # top, so drop-ins take precedence). UsePAM no avoids PAM failures in
+            # a minimal container without a full PAM stack.
+            "mkdir -p /etc/ssh/sshd_config.d",
+            "printf 'PasswordAuthentication yes\\nUsePAM no\\n'"
+            " > /etc/ssh/sshd_config.d/99-interactive.conf",
+            "/usr/sbin/sshd",
+        ]
+        for cmd in ssh_cmds:
+            result = container.exec_run(["/bin/bash", "-c", cmd], user="root")
+            if result.exit_code != 0:
+                print(f"  Warning: command exited {result.exit_code}: {cmd}")
+
+        print()
+        print("  ┌─ Environment ready ─────────────────────────────────────────────────┐")
+        print(f"  │  ssh dev@localhost -p {host_port} -o StrictHostKeyChecking=no        │")
+        print( "  │  Password: fedora                                                   │")
+        print( "  └─────────────────────────────────────────────────────────────────────┘")
+        print()
+        print("  Press Enter to stop and remove the container.")
+        input()
+    except KeyboardInterrupt:
+        print()
+    finally:
+        print("  Stopping container ...")
+        container.stop(timeout=5)
+        container.remove()
+
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run fedora-setup test suite")
+    parser.add_argument(
+        "-i", "--interactive",
+        action="store_true",
+        help="Run fedora-setup in a Fedora container, then open an SSH session",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="With -i: run fedora-setup in DRY_RUN mode (fast preview, no packages installed)",
+    )
     parser.add_argument("--unit", action="store_true", help="Run pytest unit tests only")
     parser.add_argument(
         "--integration", action="store_true",
@@ -69,6 +193,9 @@ def main() -> int:
         help="Skip Docker integration tests (unit tests still run)",
     )
     args = parser.parse_args()
+
+    if args.interactive:
+        return _interactive_env(dry_run=args.dry_run)
 
     # Determine which suites to run
     run_unit = args.unit or (not args.integration)
