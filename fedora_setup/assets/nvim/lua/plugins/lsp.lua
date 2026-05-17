@@ -72,7 +72,7 @@ return {
         b("<leader>ca",  vim.lsp.buf.code_action,      "Code action")
         b("<leader>ls",  tel.lsp_document_symbols,     "Document symbols")
         b("<leader>lS",  tel.lsp_workspace_symbols,    "Workspace symbols")
-        b("F2",          vim.lsp.buf.rename,           "Rename symbol")
+        b("<F2>",          vim.lsp.buf.rename,           "Rename symbol")
         b("<F12>",       vim.lsp.buf.definition,       "Go to definition")
         b("<S-F12>",     tel.lsp_references,           "Find all references")
       end
