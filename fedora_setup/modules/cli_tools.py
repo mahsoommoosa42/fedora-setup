@@ -48,7 +48,9 @@ def run(ctx: Context) -> None:
     if not starship_config.exists():
         colors.info("Creating default starship config with nerd-font preset...")
         starship_config.parent.mkdir(parents=True, exist_ok=True)
-        runner.run_to_file(ctx, ["starship", "preset", "nerd-font"], starship_config)
+        # Use the absolute path — ~/.local/bin isn't on PATH in the current
+        # process yet (it's added to shell_init for future sessions).
+        runner.run_to_file(ctx, [str(local_bin / "starship"), "preset", "nerd-font"], starship_config)
     else:
         colors.info(f"Starship config already exists at {starship_config} (skipping preset)")
 
