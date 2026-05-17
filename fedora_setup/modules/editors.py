@@ -15,32 +15,57 @@ enabled=1
 gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc"""
 
+# Zellij is not yet packaged in Fedora 44 repos — install pre-built musl binary.
+ZELLIJ_URL = (
+    "https://github.com/zellij-org/zellij/releases/latest/download/"
+    "zellij-x86_64-unknown-linux-musl.tar.gz"
+)
+
 _ASSETS = Path(__file__).parent.parent / "assets"
+
+
+def _install_uv_tool(ctx: Context, tool: str) -> None:
+    if ctx.dry_run:
+        print(f"DRY_RUN: uv tool install {tool}")
+        return
+    result = subprocess.run(["uv", "tool", "install", tool], check=False)
+    if result.returncode != 0:
+        colors.warn(f"uv tool install {tool} failed (exit {result.returncode}) — continuing")
 
 
 def run(ctx: Context) -> None:
     colors.section("11 · Editors, LSP, DAP & Zellij")
 
-    # ── Neovim + system LSP/DAP dependencies ─────────────────────────────────
-    colors.info("Installing Neovim + LSP/DAP system packages...")
+    # ── Neovim + system LSP/DAP packages ─────────────────────────────────────
+    colors.info("Installing Neovim, clangd, LLDB...")
     runner.dnf_install(ctx, "neovim", "nodejs", "clang-tools-extra", "lldb")
 
-    colors.info("Installing Python LSP and DAP tools via uv...")
+    colors.info("Installing pyright and debugpy via uv...")
     for tool in ("pyright", "debugpy"):
-        if ctx.dry_run:
-            print(f"DRY_RUN: uv tool install {tool}")
+        _install_uv_tool(ctx, tool)
+
+    colors.info("Writing Neovim IDE configuration to ~/.config/nvim ...")
+    nvim_dst = ctx.home / ".config" / "nvim"
+    runner.copy_tree(ctx, _ASSETS / "nvim", nvim_dst)
+    colors.success("Neovim ready — launch with: nvim  (plugins bootstrap on first run)")
+
+    # ── Zellij: pre-built binary from GitHub (not yet in Fedora 44 repos) ────
+    colors.info("Installing Zellij from GitHub release (not in Fedora 44 repos)...")
+    bin_dir = ctx.home / ".local" / "bin"
+    runner.download_extract_tarball(ctx, ZELLIJ_URL, bin_dir)
+
+    if not ctx.dry_run:
+        zellij_bin = bin_dir / "zellij"
+        if zellij_bin.exists():
+            zellij_bin.chmod(0o755)
+            colors.success(f"Zellij installed at {zellij_bin}")
         else:
-            subprocess.run(["uv", "tool", "install", tool], check=False)
+            colors.warn(
+                "Zellij binary not found after download — "
+                f"check network access or download manually: {ZELLIJ_URL}"
+            )
 
-    colors.info("Writing Neovim IDE configuration...")
-    runner.copy_tree(ctx, _ASSETS / "nvim", ctx.home / ".config" / "nvim")
-    colors.success("Neovim ready — launch with: nvim  (plugins install on first run)")
-
-    # ── Zellij terminal workspace ─────────────────────────────────────────────
-    colors.info("Installing Zellij terminal workspace...")
-    runner.dnf_install(ctx, "zellij")
-
-    colors.info("Writing Zellij configuration...")
+    colors.info("Writing Zellij configuration to ~/.config/zellij ...")
     runner.copy_tree(ctx, _ASSETS / "zellij", ctx.home / ".config" / "zellij")
 
     shell_init.clean_shell_init(ctx, "zellij alias")
@@ -56,7 +81,7 @@ def run(ctx: Context) -> None:
     shell_init.append_to_shell_init(
         ctx,
         "stty -ixon",
-        "# Allow Ctrl+S in terminal apps (disables XON/XOFF flow control)\n"
+        "# Disable XON/XOFF so Ctrl+S works in Neovim over SSH\n"
         "stty -ixon 2>/dev/null || true",
     )
 
@@ -68,9 +93,10 @@ def run(ctx: Context) -> None:
         colors.info("  → Install VS Code for Windows and use the Remote-WSL extension")
         colors.info("  → Or run: curl -fsSL https://code-server.dev/install.sh | sh")
     else:
-        colors.info("Adding VS Code repository...")
+        colors.info("Adding VS Code Microsoft repository...")
         runner.rpm_import(ctx, "https://packages.microsoft.com/keys/microsoft.asc")
         runner.sudo_tee_repo(ctx, "/etc/yum.repos.d/vscode.repo", VSCODE_REPO)
+        colors.info("Installing VS Code...")
         runner.dnf_install(ctx, "code")
         colors.success("VS Code installed — launch with: code")
 
